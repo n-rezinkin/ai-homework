@@ -1,0 +1,844 @@
+/*
+  «Неделя привычек» — визуальный проход (скилл frontend-design).
+  Направление: степ-секвенсор привычек. Неделя — это семь шагов, отметка
+  «зажигает» шаг, серия — непрерывный прогон зажжённых шагов. Моноширинный
+  шрифт несёт характер данных (метки дней, счётчики, серия-readout),
+  индиго — управляющий акцент, зелёный — зажжённый шаг.
+
+  Логику, классы и data-/aria-атрибуты не трогаем — только оформление.
+*/
+
+/* ============================ Токены ============================ */
+
+:root {
+  /* Гарнитуры: всё локальное, без сети */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, 'Cascadia Mono',
+    'Roboto Mono', Consolas, monospace;
+
+  /* Светлая тема — «бумажная консоль» */
+  --bg: #e8eaef;
+  --bg-glow: #f3f4f8;
+  --panel: #ffffff;
+  --sunken: #eef0f4;
+  --text: #14171c;
+  --muted: #454c59;
+  --border: #d5d9e0;
+  --border-strong: #c3c8d2;
+
+  --accent: #3841cf;
+  --accent-strong: #2c34b8;
+  --accent-ink: #ffffff;
+  --accent-soft: #ecedfb;
+
+  --done: #157a45;
+  --done-lit: #23a862;
+  --done-ink: #ffffff;
+  --done-soft: #e4f4ea;
+  --done-text: #0f5c34;
+
+  --warn: #b26a00;
+  --danger: #b3261e;
+  --danger-ink: #ffffff;
+  --danger-soft: #fbe9e8;
+  --success: var(--done);
+
+  --focus: #3841cf;
+  --focus-ring: #ffffff;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-cell: 9px;
+
+  --shadow-1: 0 1px 2px rgb(20 23 28 / 0.05), 0 2px 6px rgb(20 23 28 / 0.05);
+  --shadow-2: 0 6px 24px rgb(20 23 28 / 0.10);
+  --shadow-lit: 0 0 0 1px rgb(21 122 69 / 0.35), 0 4px 14px rgb(21 122 69 / 0.28);
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'],
+:root[data-theme='system'] {
+  color-scheme: light dark;
+}
+
+/* Тёмная тема — «инструмент в темноте» */
+:root[data-theme='dark'] {
+  --bg: #0e1116;
+  --bg-glow: #161b23;
+  --panel: #171c24;
+  --sunken: #10141a;
+  --text: #e8ebf1;
+  --muted: #aeb8c8;
+  --border: #29303a;
+  --border-strong: #3a424e;
+
+  --accent: #98a1ff;
+  --accent-strong: #a3abff;
+  --accent-ink: #0e1116;
+  --accent-soft: #20243a;
+
+  --done: #2fbd6e;
+  --done-lit: #57e196;
+  --done-ink: #05130b;
+  --done-soft: #16281e;
+  --done-text: #4ed389;
+
+  --warn: #e0a53a;
+  --danger: #ff6b62;
+  --danger-ink: #1a0605;
+  --danger-soft: #2a1614;
+  --success: var(--done);
+
+  --focus: #98a1ff;
+  --focus-ring: #0e1116;
+
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 10px 30px rgb(0 0 0 / 0.5);
+  --shadow-lit: 0 0 0 1px rgb(47 189 110 / 0.4), 0 4px 18px rgb(47 189 110 / 0.32);
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] {
+    --bg: #0e1116;
+    --bg-glow: #161b23;
+    --panel: #171c24;
+    --sunken: #10141a;
+    --text: #e8ebf1;
+    --muted: #aeb8c8;
+    --border: #29303a;
+    --border-strong: #3a424e;
+
+    --accent: #98a1ff;
+    --accent-strong: #a3abff;
+    --accent-ink: #0e1116;
+    --accent-soft: #20243a;
+
+    --done: #2fbd6e;
+    --done-lit: #57e196;
+    --done-ink: #05130b;
+    --done-soft: #16281e;
+  --done-text: #4ed389;
+
+    --warn: #e0a53a;
+    --danger: #ff6b62;
+    --danger-ink: #1a0605;
+    --danger-soft: #2a1614;
+    --success: var(--done);
+
+    --focus: #98a1ff;
+    --focus-ring: #0e1116;
+
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 10px 30px rgb(0 0 0 / 0.5);
+    --shadow-lit: 0 0 0 1px rgb(47 189 110 / 0.4), 0 4px 18px rgb(47 189 110 / 0.32);
+  }
+}
+
+/* ============================ База ============================ */
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background-color: var(--bg);
+  background-image: radial-gradient(120% 80% at 50% -10%, var(--bg-glow), transparent 60%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* ============================ Каркас ============================ */
+
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(20px, 4dvh, 40px) clamp(16px, 4vw, 32px) 56px;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  animation: page-in 0.5s ease both;
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* --------------------------- Шапка --------------------------- */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 24px;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.title-block { max-width: 46ch; }
+
+.title-block::before {
+  content: 'ТРЕКЕР · 7 ШАГОВ';
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 10px 0 0;
+  font-size: 15px;
+  max-width: 40ch;
+}
+
+/* ============================ Кнопки ============================ */
+
+.button,
+.chip,
+.icon-button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--text);
+  padding: 9px 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 550;
+  line-height: 1.2;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.button:hover,
+.chip:hover,
+.icon-button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.button:active,
+.chip:active,
+.icon-button:active { transform: translateY(1px); }
+
+.button.small,
+.chip {
+  padding: 7px 12px;
+  font-size: 13.5px;
+}
+
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-1);
+}
+.button.primary:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--danger-ink);
+}
+.button.danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  filter: brightness(0.94);
+}
+
+.button.ghost { background: transparent; }
+.button.ghost:hover { background: var(--accent-soft); }
+
+.chip[data-active] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-1);
+}
+.chip[data-active]:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.button:disabled,
+.button:disabled:hover {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--muted);
+  border-color: transparent;
+  background: transparent;
+}
+.icon-button:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: transparent;
+}
+.icon-button svg { width: 17px; height: 17px; }
+
+.btn-ico { width: 15px; height: 15px; flex: none; }
+
+/* ============================ Фокус ============================ */
+
+:where(button, input, [tabindex], a):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.cell:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--focus-ring), 0 0 0 6px var(--focus);
+  z-index: 3;
+}
+
+/* ============================ Панель инструментов ============================ */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+
+.theme-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--sunken);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.theme-switch .chip {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.theme-switch .chip:hover { background: var(--panel); }
+.theme-switch .chip[data-active] {
+  background: var(--panel);
+  color: var(--accent);
+  border-color: var(--border);
+  box-shadow: var(--shadow-1);
+}
+
+.data-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ============================ Баннеры ============================ */
+
+.live-region { min-height: 0; }
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--muted);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow-1);
+  animation: banner-in 0.28s ease both;
+}
+@keyframes banner-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.banner[data-tone='error'] {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+.banner[data-tone='warning'] { border-left-color: var(--warn); }
+.banner[data-tone='success'] {
+  border-left-color: var(--success);
+  background: var(--done-soft);
+}
+
+.banner-lead { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.banner-icon { flex: none; margin-top: 1px; width: 20px; height: 20px; }
+.banner[data-tone='error'] .banner-icon { color: var(--danger); }
+.banner[data-tone='warning'] .banner-icon { color: var(--warn); }
+.banner[data-tone='success'] .banner-icon { color: var(--success); }
+.banner-text { margin: 0; }
+.banner-actions { display: flex; gap: 8px; flex: none; }
+
+/* ============================ Форма добавления ============================ */
+
+.add-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-1);
+}
+.field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 260px; }
+.field label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.input {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
+  color: var(--text);
+  width: 100%;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input::placeholder { color: var(--muted); opacity: 0.75; }
+.input:hover { border-color: var(--border-strong); }
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--panel);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.input[aria-invalid] { border-color: var(--danger); }
+.input[aria-invalid]:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
+.field-error {
+  margin: 0;
+  min-height: 18px;
+  font-size: 13px;
+  color: var(--danger);
+  font-weight: 500;
+}
+.add-form .button { align-self: flex-start; margin-top: 27px; }
+@media (max-width: 520px) {
+  .add-form .button { margin-top: 0; width: 100%; }
+}
+
+/* ============================ Навигация по неделям ============================ */
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.week-label {
+  font-weight: 650;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.badge {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  /* Отдельный токен: --done используется как заливка под белым текстом,
+     затемнять его нельзя, а текста поверх done-soft ему не хватало. */
+  color: var(--done-text);
+  background: var(--done-soft);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+/* ============================ Сетка недели ============================ */
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 16px 14px;
+  box-shadow: var(--shadow-1);
+}
+
+.grid-head,
+.grid-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.6fr) repeat(7, minmax(38px, 1fr)) 72px 40px;
+  gap: 6px;
+  align-items: center;
+}
+
+.grid-head {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 10px 0;
+}
+
+.col-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  line-height: 1.1;
+}
+.col-day-name { text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+.col-day-num { font-size: 13px; color: var(--text); font-weight: 600; }
+.col-day[data-today] { color: var(--accent); }
+.col-day[data-today] .col-day-num { color: var(--accent); }
+
+.col-streak,
+.col-actions {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.col-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  padding-right: 4px;
+}
+
+.grid-row {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.grid-row:first-of-type { border-top: none; }
+
+.cell-wrap {
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+/*
+  Сигнатура: серия, ставшая видимой. Между двумя соседними зажжёнными
+  днями в строке рисуем «мостик» через зазор сетки — непрерывный прогон
+  читается как цепь, которую не хочется рвать. Чисто декоративно.
+*/
+.cell-wrap:has(.cell[data-checked]) + .cell-wrap:has(.cell[data-checked])::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  width: 8px;
+  top: 50%;
+  height: 7px;
+  transform: translateY(-50%);
+  background: var(--done);
+  border-radius: 2px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.cell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-cell);
+  background: var(--sunken);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: background-color 0.16s ease, border-color 0.16s ease,
+    transform 0.12s ease, box-shadow 0.18s ease;
+}
+.cell:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.cell:active { transform: scale(0.94); }
+
+.cell[data-checked] {
+  background: var(--done);
+  border-color: var(--done);
+  box-shadow: var(--shadow-lit);
+}
+.cell[data-checked]:hover {
+  background: var(--done);
+  border-color: var(--done-lit);
+}
+
+.cell[data-today] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cell[data-today][data-checked] {
+  box-shadow: inset 0 0 0 1px var(--accent), var(--shadow-lit);
+}
+
+.cell[data-future] {
+  cursor: not-allowed;
+  color: var(--muted);
+  background: var(--sunken);
+  border-style: dashed;
+  border-color: var(--border);
+  opacity: 0.6;
+}
+.cell[data-future]:hover {
+  background: var(--sunken);
+  border-color: var(--border);
+}
+
+.cell-day {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cell[data-checked] .cell-day { color: var(--done-ink); }
+
+.cell-mark {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+  transition: transform 0.16s ease, background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+.cell:hover .cell-mark { border-color: var(--accent); }
+.cell[data-checked] .cell-mark {
+  background: var(--done-ink);
+  border-color: var(--done-ink);
+  transform: scale(1.15);
+}
+.cell[data-future] .cell-mark { border-style: dashed; }
+
+/* --------------------------- Серия-readout --------------------------- */
+
+.streak {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 17px;
+  /* Тот же токен, что у бейджа: --done задуман как заливка, для текста
+     на светлом фоне он слабоват. Замер: было 5.38:1, стало выше 7:1. */
+  color: var(--done-text);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.streak::after {
+  content: 'дн.';
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.streak[data-zero] {
+  color: var(--muted);
+  font-weight: 500;
+}
+.streak[data-zero]::after { content: '—'; color: var(--muted); }
+
+/* ============================ Пустой экран ============================ */
+
+.empty {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: clamp(32px, 6dvh, 52px) 24px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.empty-art { color: var(--accent); margin-bottom: 6px; }
+.empty h2 { color: var(--text); margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+.empty p { margin: 0 auto; max-width: 44ch; }
+.empty .button { margin-top: 12px; }
+
+/* ============================ Подсказка / подвал ============================ */
+
+.hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+  line-height: 1.6;
+}
+
+/* ============================ Диалог ============================ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  /*
+    Обязательный z-index. Ячейки сетки получили position: relative и z-index: 1
+    (ради «мостика» между выполненными днями), а у ячейки в фокусе он равен 3.
+    Позиционированный элемент с z-index: auto рисуется РАНЬШЕ таких — и сетка
+    оказывалась поверх диалога. Выглядело как «диалог просвечивает», хотя
+    заливка у него непрозрачная: он просто был под сеткой.
+  */
+  z-index: 100;
+  background: rgb(8 10 14 / 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: overlay-in 0.18s ease both;
+}
+/*
+  Анимируется ЦВЕТ подложки, а не её opacity: opacity наследуется всем
+  поддеревом, и вместе с подложкой полупрозрачным становился сам диалог —
+  сквозь него просвечивала сетка. Замер по .dialog этого не показывал:
+  у него opacity честно равна 1, гасил родитель.
+*/
+@keyframes overlay-in {
+  from { background-color: rgb(8 10 14 / 0); }
+  to { background-color: rgb(8 10 14 / 0.55); }
+}
+.dialog {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow-2);
+  animation: dialog-in 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+/*
+  Диалог НЕ анимирует opacity: пока она шла от 0 к 1, сквозь непрозрачную
+  панель просвечивала сетка под ней — 0,22 секунды, но заметно.
+  Появление держится на подложке (она гасит фон) и на сдвиге со сжатием.
+*/
+@keyframes dialog-in {
+  from { transform: translateY(8px) scale(0.98); }
+  to { transform: none; }
+}
+.dialog h2 { margin: 0 0 8px; font-size: 19px; letter-spacing: -0.01em; }
+.dialog p { margin: 0 0 22px; color: var(--muted); }
+.dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ============================ Спец ============================ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ============================ Узкий экран ============================ */
+/*
+  На 360px строка перестраивается в карточку: семь ячеек плюс имя, серия и
+  удаление в одну строку не помещаются без прокрутки. Брейкпоинт 720px.
+*/
+@media (max-width: 720px) {
+  .grid {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    gap: 12px;
+  }
+  .grid-head { display: none; }
+  .grid-row {
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-areas:
+      'name name name name name streak act'
+      'd1 d2 d3 d4 d5 d6 d7';
+    row-gap: 10px;
+    column-gap: 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    background: var(--panel);
+    box-shadow: var(--shadow-1);
+  }
+  .grid-row:first-of-type { border-top: 1px solid var(--border); }
+  .col-name { grid-area: name; align-self: center; font-size: 15px; }
+  .col-streak { grid-area: streak; }
+  .col-actions { grid-area: act; }
+  .cell { min-height: 46px; }
+  .cell-day { display: block; }
+  .cell[data-checked] .cell-mark { transform: scale(1); }
+}
+
+@media (max-width: 400px) {
+  .grid-row { column-gap: 4px; padding: 12px; }
+  .cell { min-height: 42px; }
+
+  /*
+    Дизайн-проход заявил «360px без прокрутки», но навигация по неделям
+    в одну строку не помещалась: перебор 10px. Ловится только замером,
+    глазами скриншот выглядит нормально — правый край просто уезжает.
+    Переносим подпись недели на отдельную строку.
+  */
+  .week-nav { flex-wrap: wrap; row-gap: 8px; }
+  .week-label { order: -1; width: 100%; justify-content: center; }
+  .week-nav .button { flex: 1 1 auto; }
+}
+
+/* ============================ Меньше движения ============================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
